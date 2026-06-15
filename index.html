@@ -1,0 +1,1312 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sistema Elite de Elección de Belleza</title>
+
+<!-- ════════════════════════════════════════════════════════
+     FIREBASE SDK (versión compat — funciona con <script> simple)
+     ════════════════════════════════════════════════════════ -->
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+
+<style>
+:root{
+  --gold:#d4af37;--gold-light:#f4d03f;--black:#0a0a0a;
+  --white:#f5f5f5;--neon-gold:#ffd700;--neon-purple:#b833ff;
+  --neon-cyan:#00ffff;--br-lg:12px;--br-md:8px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:linear-gradient(135deg,#0a0a0a 0%,#1a1a1a 100%);color:var(--white);
+  font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;overflow-x:hidden;min-height:100vh}
+.hidden{display:none!important}
+
+.card{background:rgba(15,15,15,.92);border:1px solid rgba(212,175,55,.3);border-radius:var(--br-lg);
+  padding:1.5rem;margin-bottom:1rem;backdrop-filter:blur(10px);
+  box-shadow:0 8px 32px rgba(212,175,55,.1),inset 0 1px 0 rgba(255,255,255,.07);transition:all .3s}
+.card:hover{border-color:rgba(212,175,55,.55)}
+.screen{padding:2rem;max-width:1100px;margin:0 auto}
+
+.hdr{padding:1.4rem 2rem;display:flex;align-items:center;justify-content:space-between;
+  border-bottom:2px solid rgba(212,175,55,.5);box-shadow:0 4px 20px rgba(212,175,55,.12)}
+.hdr-admin{background:linear-gradient(135deg,rgba(212,175,55,.18),rgba(20,20,20,.97));border-bottom-color:var(--gold)}
+.hdr-jury{background:linear-gradient(135deg,rgba(0,200,100,.15),rgba(20,20,20,.97));border-bottom-color:rgba(0,200,100,.6)}
+.hdr h1{font-size:22px;font-weight:700;background:linear-gradient(135deg,var(--gold),var(--neon-gold));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.hdr p{font-size:12px;opacity:.7;margin-top:4px}
+.hdr-badge{background:rgba(212,175,55,.18);padding:6px 14px;border-radius:20px;font-size:12px;
+  border:1px solid rgba(212,175,55,.45);color:var(--gold-light)}
+
+.btn{padding:10px 20px;border-radius:var(--br-md);border:1.5px solid rgba(212,175,55,.4);
+  background:rgba(212,175,55,.1);color:var(--white);cursor:pointer;font-size:13px;font-weight:600;
+  transition:all .3s;text-transform:uppercase;letter-spacing:.5px;position:relative;overflow:hidden}
+.btn::before{content:'';position:absolute;top:0;left:-100%;width:100%;height:100%;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.15),transparent);transition:left .5s}
+.btn:hover::before{left:100%}
+.btn:hover{border-color:var(--gold);background:rgba(212,175,55,.22);
+  box-shadow:0 0 18px rgba(212,175,55,.35);transform:translateY(-2px)}
+.btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.btn-purple{background:linear-gradient(135deg,rgba(184,51,255,.18),rgba(212,175,55,.12));
+  border-color:var(--neon-purple);color:var(--neon-gold)}
+.btn-purple:hover{box-shadow:0 0 18px var(--neon-purple)}
+.btn-teal{background:linear-gradient(135deg,rgba(0,200,100,.18),rgba(212,175,55,.1));border-color:rgba(0,200,100,.75)}
+.btn-teal:hover{box-shadow:0 0 18px rgba(0,200,100,.5)}
+.btn-red{background:linear-gradient(135deg,rgba(230,30,30,.18),rgba(212,175,55,.08));border-color:rgba(230,30,30,.75)}
+.btn-red:hover{box-shadow:0 0 18px rgba(230,30,30,.5)}
+.btn-amber{background:linear-gradient(135deg,rgba(255,165,0,.18),rgba(212,175,55,.12));border-color:var(--gold)}
+.btn-amber:hover{box-shadow:0 0 18px rgba(255,165,0,.5)}
+.btn-sm{padding:6px 12px;font-size:11px}
+.btn-full{width:100%;padding:13px;font-size:15px}
+
+.inp{border:1.5px solid rgba(212,175,55,.3);border-radius:var(--br-md);padding:10px 14px;font-size:14px;
+  width:100%;background:rgba(20,20,20,.85);color:var(--white);transition:all .3s;font-family:inherit}
+.inp::placeholder{color:rgba(255,255,255,.35)}
+.inp:focus{outline:none;border-color:var(--gold);
+  box-shadow:0 0 14px rgba(212,175,55,.35),inset 0 0 6px rgba(212,175,55,.08);background:rgba(30,30,30,.95)}
+label{font-size:12px;color:rgba(212,175,55,.85);margin-bottom:5px;display:block;
+  font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+
+.alert{padding:12px 16px;border-radius:var(--br-md);font-size:13px;margin-bottom:1rem;border-left:4px solid;backdrop-filter:blur(10px)}
+.alert-warn{background:rgba(212,175,55,.12);color:var(--gold-light);border-left-color:var(--gold)}
+.alert-info{background:rgba(0,150,200,.12);color:rgba(100,200,255,.9);border-left-color:rgba(0,150,200,.8)}
+.alert-err{background:rgba(230,30,30,.12);color:rgba(255,150,150,.9);border-left-color:rgba(230,30,30,.8)}
+.alert-ok{background:rgba(0,200,100,.12);color:rgba(150,255,180,.9);border-left-color:rgba(0,200,100,.8)}
+
+.tabs{display:flex;gap:6px;margin-bottom:1.5rem;border-bottom:1px solid rgba(212,175,55,.2);flex-wrap:wrap}
+.tab{padding:10px 18px;border-radius:var(--br-md) var(--br-md) 0 0;cursor:pointer;font-size:13px;
+  border:1px solid transparent;background:transparent;color:rgba(255,255,255,.55);
+  transition:all .3s;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.tab:hover{background:rgba(212,175,55,.08);color:var(--gold)}
+.tab.on{background:linear-gradient(135deg,rgba(212,175,55,.22),rgba(212,175,55,.1));color:var(--gold);
+  border:1px solid rgba(212,175,55,.45);border-bottom-color:var(--gold);box-shadow:0 4px 12px rgba(212,175,55,.18)}
+
+.score-row{display:flex;align-items:center;gap:10px;margin-bottom:10px;padding:11px;
+  background:linear-gradient(135deg,rgba(212,175,55,.07),rgba(212,175,55,.02));
+  border-radius:var(--br-md);border:1px solid rgba(212,175,55,.18)}
+.score-lbl{font-size:13px;font-weight:600;color:var(--gold-light);flex-shrink:0}
+.score-val{font-size:19px;font-weight:700;color:var(--neon-gold);min-width:34px;
+  text-align:center;text-shadow:0 0 8px rgba(212,175,55,.5);flex-shrink:0}
+.btns10{display:flex;gap:3px;flex-wrap:wrap;flex:1}
+.sb{width:27px;height:27px;border:1.5px solid rgba(212,175,55,.35);border-radius:4px;
+  background:rgba(20,20,20,.85);cursor:pointer;font-size:11px;display:flex;align-items:center;
+  justify-content:center;transition:all .18s;color:rgba(255,255,255,.65);font-weight:600;flex-shrink:0}
+.sb:hover:not(.lk){background:rgba(212,175,55,.18);border-color:var(--gold);box-shadow:0 0 8px rgba(212,175,55,.3)}
+.sb.on{background:linear-gradient(135deg,var(--gold),var(--neon-gold));color:var(--black);
+  border-color:var(--gold);box-shadow:0 0 12px rgba(212,175,55,.55);font-weight:700}
+.sb.lk{cursor:not-allowed;opacity:.45}
+
+.bar{background:rgba(20,20,20,.85);border-radius:4px;height:20px;overflow:hidden;margin-top:4px;
+  border:1px solid rgba(212,175,55,.18)}
+.bar-f{height:100%;border-radius:4px;
+  background:linear-gradient(90deg,var(--gold),var(--neon-gold));transition:width .4s;
+  box-shadow:0 0 8px rgba(212,175,55,.45)}
+.cbar-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.cbar-name{font-size:13px;min-width:120px;text-align:right;color:var(--gold-light);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}
+.cbar-wrap{flex:1;background:rgba(20,20,20,.85);border-radius:4px;height:24px;overflow:hidden;
+  border:1px solid rgba(212,175,55,.18)}
+.cbar-inner{height:100%;border-radius:4px;display:flex;align-items:center;padding-left:8px;
+  font-size:12px;color:var(--black);font-weight:700;
+  background:linear-gradient(90deg,var(--gold),var(--neon-gold))}
+
+.pos-badge{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;font-weight:700;font-size:14px;flex-shrink:0;
+  border:2px solid rgba(212,175,55,.5);box-shadow:0 0 12px rgba(212,175,55,.35)}
+.p1{background:linear-gradient(135deg,var(--gold),var(--neon-gold));color:var(--black)}
+.p2{background:linear-gradient(135deg,rgba(192,192,192,.85),rgba(220,220,220,.85));color:var(--black)}
+.p3{background:linear-gradient(135deg,rgba(205,127,50,.85),rgba(255,165,0,.65));color:var(--black)}
+.px{background:rgba(212,175,55,.12);color:var(--gold-light)}
+
+.role-card{border:2px solid rgba(212,175,55,.28);border-radius:var(--br-lg);padding:2rem 1.5rem;
+  cursor:pointer;transition:all .3s;text-align:center;background:rgba(22,22,22,.65);backdrop-filter:blur(10px)}
+.role-card:hover{border-color:var(--gold);background:rgba(212,175,55,.08);
+  box-shadow:0 8px 28px rgba(212,175,55,.18);transform:translateY(-4px)}
+.role-card.sel{border:2px solid var(--gold);
+  background:linear-gradient(135deg,rgba(212,175,55,.18),rgba(212,175,55,.04));
+  box-shadow:0 0 28px rgba(212,175,55,.38)}
+
+.part-block{border:1px solid rgba(212,175,55,.28);border-radius:var(--br-md);padding:14px;
+  margin-bottom:12px;background:rgba(20,20,20,.65);backdrop-filter:blur(10px);transition:all .3s}
+.part-block:hover{border-color:rgba(212,175,55,.55)}
+.part-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.crit-tag{display:inline-flex;align-items:center;gap:5px;background:rgba(212,175,55,.18);
+  color:var(--gold-light);border-radius:20px;padding:5px 12px;font-size:12px;margin:3px;
+  border:1px solid rgba(212,175,55,.38);font-weight:500}
+
+.cand-row{display:flex;gap:10px;align-items:center;margin-bottom:10px;padding:10px;
+  background:rgba(212,175,55,.04);border-radius:var(--br-md);border:1px solid rgba(212,175,55,.18);transition:all .3s}
+.cand-row:hover{background:rgba(212,175,55,.09);border-color:rgba(212,175,55,.38)}
+.cand-thumb{width:54px;height:54px;border-radius:var(--br-md);object-fit:cover;object-position:center top;
+  border:2px solid rgba(212,175,55,.5);flex-shrink:0;box-shadow:0 0 10px rgba(212,175,55,.28)}
+.cand-thumb-placeholder{width:54px;height:54px;border-radius:var(--br-md);
+  background:rgba(212,175,55,.06);border:2px dashed rgba(212,175,55,.38);flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .3s;color:var(--gold-light)}
+.cand-thumb-placeholder:hover{background:rgba(212,175,55,.14);border-color:var(--gold)}
+.upload-btn{padding:5px 10px;font-size:11px;border-radius:var(--br-md);
+  border:1px solid rgba(212,175,55,.28);background:rgba(212,175,55,.07);cursor:pointer;
+  color:var(--gold-light);transition:all .3s;font-weight:500;white-space:nowrap}
+.upload-btn:hover{background:rgba(212,175,55,.15);border-color:var(--gold)}
+
+.jury-cand-card{
+  background:rgba(18,18,18,.92);border:1.5px solid rgba(212,175,55,.28);
+  border-radius:var(--br-lg);margin-bottom:1.5rem;overflow:hidden;
+  transition:all .3s;display:flex;align-items:stretch;
+}
+.jury-cand-card:hover{border-color:rgba(212,175,55,.6);box-shadow:0 8px 28px rgba(212,175,55,.18)}
+.jury-photo-col{flex-shrink:0;width:220px;position:relative;background:#111;
+  border-right:2px solid rgba(212,175,55,.28);overflow:hidden}
+.jury-photo-col img{position:absolute;top:0;left:0;width:100%;height:100%;
+  object-fit:cover;object-position:center top;display:block}
+.jury-photo-placeholder{position:absolute;top:0;left:0;width:100%;height:100%;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  background:linear-gradient(135deg,rgba(212,175,55,.08),rgba(212,175,55,.02));
+  color:rgba(212,175,55,.45);gap:8px;font-size:13px}
+.jury-cand-body{flex:1;padding:1.2rem 1.3rem;display:flex;flex-direction:column;overflow:hidden}
+.jury-cand-name{font-size:17px;font-weight:700;margin-bottom:12px;color:var(--gold-light);
+  letter-spacing:.5px;border-bottom:1px solid rgba(212,175,55,.2);padding-bottom:8px}
+
+.result-cand-photo{width:48px;height:48px;border-radius:50%;object-fit:cover;object-position:center top;
+  border:2px solid rgba(212,175,55,.5);flex-shrink:0;box-shadow:0 0 10px rgba(212,175,55,.28)}
+.result-cand-avatar{width:48px;height:48px;border-radius:50%;
+  background:linear-gradient(135deg,rgba(212,175,55,.18),rgba(212,175,55,.04));
+  border:2px solid rgba(212,175,55,.45);flex-shrink:0;display:flex;align-items:center;
+  justify-content:center;color:var(--gold);font-size:18px}
+
+.spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(212,175,55,.3);
+  border-top-color:var(--gold);border-radius:50%;animation:spin 0.8s linear infinite;vertical-align:middle;margin-right:6px}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.card,.role-card,.jury-cand-card{animation:fadeIn .35s ease}
+h2{font-size:26px;font-weight:700;background:linear-gradient(135deg,var(--gold),var(--neon-gold));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:1rem}
+h3{color:var(--gold-light);font-weight:600}
+#s-login,#s-loading{min-height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center}
+
+@media(max-width:700px){
+  .screen{padding:1rem}
+  .hdr{flex-direction:column;gap:1rem;align-items:flex-start}
+  .jury-cand-card{flex-direction:column}
+  .jury-photo-col{width:100%;height:200px;border-right:none;border-bottom:2px solid rgba(212,175,55,.28)}
+  .cbar-name{min-width:70px;font-size:11px}
+  .btns10 .sb{width:23px;height:23px;font-size:10px}
+}
+@media print{
+  .no-print{display:none!important}
+  body{background:white!important;color:black!important}
+  .card{background:white!important;border:1px solid #ccc!important;box-shadow:none!important;color:black!important}
+  .hdr{background:white!important;border-bottom:2px solid #ccc!important}
+  h1,h2,h3{color:#222!important;-webkit-text-fill-color:#222!important}
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- ═══ PANTALLA DE CARGA ═══ -->
+<div id="s-loading" class="screen">
+  <div style="text-align:center">
+    <div style="font-size:64px;margin-bottom:12px">👑</div>
+    <h2 style="font-size:24px">Conectando con la base de datos...</h2>
+    <p style="color:rgba(255,255,255,.5);margin-top:10px"><span class="spinner"></span>Por favor espera</p>
+    <div id="conn-error" class="hidden alert alert-err" style="margin-top:20px;max-width:500px;text-align:left"></div>
+  </div>
+</div>
+
+<!-- ═══ LOGIN ═══ -->
+<div id="s-login" class="screen hidden">
+  <div style="text-align:center;margin-bottom:2rem">
+    <div style="font-size:64px;margin-bottom:12px;filter:drop-shadow(0 0 15px rgba(212,175,55,.5))">👑</div>
+    <h2 style="font-size:32px;margin-bottom:4px">Sistema Elite de Elección</h2>
+    <p style="font-size:15px;color:rgba(212,175,55,.8);margin-top:6px">Selecciona tu rol para acceder</p>
+    <p style="font-size:11px;color:rgba(0,200,100,.7);margin-top:6px">🟢 Conectado a la base de datos en la nube</p>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:2rem;max-width:500px;width:100%">
+    <div class="role-card" id="rc-admin" onclick="selectRole('admin')">
+      <div style="font-size:44px;margin-bottom:12px">🛡️</div>
+      <div style="font-size:17px;font-weight:700;background:linear-gradient(135deg,var(--gold),var(--neon-gold));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">ADMINISTRADOR</div>
+      <div style="font-size:13px;color:rgba(255,255,255,.5);margin-top:6px">Configura y supervisa</div>
+    </div>
+    <div class="role-card" id="rc-jury" onclick="selectRole('jury')">
+      <div style="font-size:44px;margin-bottom:12px">⭐</div>
+      <div style="font-size:17px;font-weight:700;background:linear-gradient(135deg,var(--gold),var(--neon-gold));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">JURADO</div>
+      <div style="font-size:13px;color:rgba(255,255,255,.5);margin-top:6px">Califica candidatas</div>
+    </div>
+  </div>
+  <div id="login-admin-fields" class="hidden card" style="margin-bottom:1rem;max-width:500px;width:100%">
+    <div style="margin-bottom:12px"><label>USUARIO</label><input class="inp" id="l-user" style="margin-top:6px"/></div>
+    <div><label>CONTRASEÑA</label><input class="inp" id="l-pass" type="password" style="margin-top:6px"/></div>
+  </div>
+  <div id="login-jury-fields" class="hidden card" style="margin-bottom:1rem;max-width:500px;width:100%">
+    <div style="margin-bottom:12px"><label>USUARIO DE JURADO</label><input class="inp" id="l-jcode" style="margin-top:6px"/></div>
+    <div><label>CONTRASEÑA</label><input class="inp" id="l-jpass" type="password" style="margin-top:6px"/></div>
+  </div>
+  <div id="l-err" class="alert alert-warn hidden" style="max-width:500px;width:100%"></div>
+  <button class="btn btn-purple btn-full no-print" id="l-btn" onclick="doLogin()" style="max-width:500px">INGRESAR AL SISTEMA</button>
+</div>
+
+<!-- ═══ SUPER ADMIN ═══ -->
+<div id="s-super" class="hidden">
+  <div class="hdr hdr-admin no-print">
+    <div><h1>👑 SUPER ADMINISTRADOR</h1><p style="color:rgba(212,175,55,.8)">Control central del sistema</p></div>
+    <button class="btn btn-sm" onclick="logout()" style="background:rgba(212,175,55,.18);color:var(--gold);border-color:rgba(212,175,55,.5)">SALIR</button>
+  </div>
+  <div class="screen">
+    <div class="tabs no-print">
+      <div class="tab on" id="tab-admins" onclick="superTab('admins')">👥 ADMINISTRADORES DE EVENTO</div>
+      <div class="tab" id="tab-asuper-event" onclick="superTab('event')">⚙️ GESTIONAR EVENTO</div>
+    </div>
+
+    <div id="super-admins">
+      <div class="card">
+        <h3 style="margin-bottom:14px">Crear nuevo Administrador de Evento</h3>
+        <div class="grid2" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+          <div><label>USUARIO</label><input class="inp" id="na-user" style="margin-top:6px"/></div>
+          <div><label>CONTRASEÑA</label><input class="inp" id="na-pass" style="margin-top:6px"/></div>
+        </div>
+        <div id="na-err" class="alert alert-warn hidden"></div>
+        <button class="btn btn-purple" onclick="createAdminEvento()">➕ CREAR ADMINISTRADOR</button>
+      </div>
+
+      <div class="card">
+        <h3 style="margin-bottom:14px">Administradores de Evento existentes</h3>
+        <div id="admins-list"><p style="color:rgba(255,255,255,.45);font-size:13px">Cargando...</p></div>
+      </div>
+    </div>
+
+    <div id="super-event" class="hidden">
+      <div class="alert alert-info">Como Super Admin también puedes configurar y supervisar el evento directamente.</div>
+      <button class="btn btn-purple btn-full" onclick="enterEventAsSuper()">⚙️ IR AL PANEL DE GESTIÓN DEL EVENTO</button>
+    </div>
+  </div>
+</div>
+
+<div id="s-admin" class="hidden">
+  <div class="hdr hdr-admin no-print">
+    <div><h1>PANEL ADMINISTRADOR</h1><p id="a-evname" style="color:rgba(212,175,55,.8)">Preparando evento...</p></div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-sm hidden" id="back-to-super-btn" onclick="backToSuper()" style="background:rgba(212,175,55,.18);color:var(--gold);border-color:rgba(212,175,55,.5)">◀ VOLVER A SUPER ADMIN</button>
+      <button class="btn btn-sm" onclick="logout()" style="background:rgba(212,175,55,.18);color:var(--gold);border-color:rgba(212,175,55,.5)">SALIR</button>
+    </div>
+  </div>
+  <div class="screen">
+    <div class="tabs no-print">
+      <div class="tab on" id="tab-setup" onclick="aTab('setup')">⚙️ CONFIGURACIÓN</div>
+      <div class="tab" id="tab-live" onclick="aTab('live')">📊 EN VIVO</div>
+      <div class="tab" id="tab-res" onclick="aTab('res')">🏆 RESULTADOS</div>
+    </div>
+
+    <div id="a-setup">
+      <div class="card">
+        <h3 style="margin-bottom:14px">Información del Evento</h3>
+        <div><label>NOMBRE DEL CERTAMEN</label><input class="inp" id="ev-name" placeholder="Ej: Reina de la Feria 2025" style="margin-top:6px"/></div>
+      </div>
+      <div class="card">
+        <div class="part-hdr">
+          <h3>JURADOS (usuario y contraseña)</h3>
+          <button class="btn btn-teal btn-sm" onclick="addJuryUser()">+ AGREGAR JURADO</button>
+        </div>
+        <p style="font-size:12px;color:rgba(255,255,255,.5);margin-bottom:14px">Crea un usuario y contraseña para cada jurado. Ellos usarán estas credenciales para votar.</p>
+        <div id="jury-users-list"></div>
+      </div>
+      <div class="card">
+        <div class="part-hdr">
+          <h3>PARTICIPACIONES</h3>
+          <button class="btn btn-teal btn-sm" onclick="addPart()">+ AGREGAR</button>
+        </div>
+        <p style="font-size:12px;color:rgba(255,255,255,.5);margin-bottom:14px">Cada participación tiene sus propios aspectos (4–7) y candidatas con foto opcional.</p>
+        <div id="parts-list"></div>
+      </div>
+      <div id="setup-err" class="alert alert-warn hidden"></div>
+      <button class="btn btn-purple btn-full" id="start-btn" onclick="startEvent()">▶ INICIAR ELECCIÓN</button>
+    </div>
+
+    <div id="a-live" class="hidden">
+      <div class="alert alert-info" id="live-info"></div>
+      <div class="card">
+        <h3 style="margin-bottom:12px">Estado del Jurado</h3>
+        <div id="jury-status" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px"></div>
+      </div>
+      <div class="card">
+        <h3 style="margin-bottom:12px">Parciales Actuales</h3>
+        <div id="live-partial"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <button class="btn btn-teal" id="next-part-btn" onclick="nextPart()">➡ SIGUIENTE PARTICIPACIÓN</button>
+        <button class="btn btn-red" id="close-vote-btn" onclick="closeVoting()">🔒 CERRAR VOTACIÓN</button>
+      </div>
+    </div>
+
+    <div id="a-res" class="hidden">
+      <div style="display:flex;gap:10px;margin-bottom:1.5rem;flex-wrap:wrap" class="no-print">
+        <button class="btn btn-purple" onclick="window.print()">🖨 IMPRIMIR</button>
+        <button class="btn btn-amber" id="newel-btn" onclick="newElection()">🔄 NUEVA (MISMO FORMATO)</button>
+        <button class="btn btn-teal" id="newelf-btn" onclick="newElectionFresh()">+ NUEVA DESDE CERO</button>
+      </div>
+      <div id="results-content"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ JURADO ═══ -->
+<div id="s-jury" class="hidden">
+  <div class="hdr hdr-jury no-print">
+    <div><h1 id="j-evname">VOTACIÓN</h1><p id="j-whoami" style="color:rgba(0,200,100,.9)">Jurado</p></div>
+    <div class="hdr-badge" id="j-partbadge">Participación 1</div>
+  </div>
+  <div class="screen">
+    <div id="j-closed" class="hidden" style="text-align:center;padding:4rem 1rem">
+      <div style="font-size:56px;margin-bottom:12px">🏁</div>
+      <h2 style="font-size:22px;color:rgba(0,200,100,.9)">VOTACIÓN FINALIZADA</h2>
+      <p style="color:rgba(255,255,255,.55);margin-top:10px">Gracias por tu participación. El administrador tiene los resultados.</p>
+    </div>
+    <div id="j-wait" class="hidden" style="text-align:center;padding:3rem 1rem">
+      <div style="font-size:48px;margin-bottom:12px">⏳</div>
+      <h2 style="font-size:20px">PARTICIPACIÓN ENVIADA</h2>
+      <p style="font-size:14px;color:rgba(255,255,255,.55);margin-top:10px">Espera que el administrador habilite la siguiente participación. Esta pantalla se actualizará sola.</p>
+    </div>
+    <div id="j-vote">
+      <div class="alert alert-info" style="margin-bottom:1.5rem">📷 Observa la foto de cada candidata y califica del <strong>1 al 10</strong> cada aspecto.</div>
+      <div id="j-cands"></div>
+      <div style="text-align:center;margin-top:1.5rem">
+        <button class="btn btn-amber hidden" id="j-next" onclick="juryNext()" style="padding:13px 34px;font-size:15px">➡ SIGUIENTE PARTICIPACIÓN</button>
+        <p id="j-nexthint" class="hidden" style="font-size:12px;color:rgba(255,255,255,.45);margin-top:8px">Al confirmar no podrás regresar ni editar tus calificaciones.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /app -->
+
+<script>
+// ═══════════════════════════════════════════════════════════
+//  ███████  CONFIGURACIÓN DE FIREBASE  ███████
+//  PEGA AQUÍ TUS CREDENCIALES DE FIREBASE (firebaseConfig)
+//  Las obtienes en: Firebase Console → Configuración del
+//  proyecto → Tus apps → Config del SDK
+// ═══════════════════════════════════════════════════════════
+const firebaseConfig = {
+  apiKey: "AIzaSyDh87PqbBZ9n7emC2IcZIvxiZ3qmqX4L_4",
+  authDomain: "eleccion-belleza.firebaseapp.com",
+  projectId: "eleccion-belleza",
+  storageBucket: "eleccion-belleza.firebasestorage.app",
+  messagingSenderId: "406564841278",
+  appId: "1:406564841278:web:2534f78a0f4280f4a5ee6f"
+};
+// ═══════════════════════════════════════════════════════════
+
+let db=null;
+let firebaseReady=false;
+
+function initFirebase(){
+  try{
+    if(firebaseConfig.apiKey==="PEGA_AQUI_TU_API_KEY"){
+      showConnError('⚠️ Aún no has configurado Firebase.\n\nAbre este archivo HTML con un editor de texto, busca la sección "CONFIGURACIÓN DE FIREBASE" cerca del final del archivo, y pega ahí las credenciales de tu proyecto Firebase (firebaseConfig).\n\nConsulta la guía que te dieron para crear el proyecto gratuito en https://console.firebase.google.com');
+      return;
+    }
+    firebase.initializeApp(firebaseConfig);
+    db=firebase.firestore();
+    firebaseReady=true;
+    startApp();
+  }catch(e){
+    showConnError('❌ Error al conectar con Firebase: '+e.message+'\n\nVerifica que copiaste correctamente todas las credenciales de firebaseConfig.');
+  }
+}
+
+function showConnError(msg){
+  document.getElementById('conn-error').textContent=msg;
+  document.getElementById('conn-error').classList.remove('hidden');
+}
+
+// ═══════════════════════════════════════════════════════════
+//  ESTRUCTURA EN FIRESTORE (aislada por administrador)
+//  usuarios/{username}            → {password, role: 'super'|'admin_evento'}
+//  eventos/{adminUser}            → {eventName, participations, jurados, currentPart, closed, started}
+//  eventos/{adminUser}_fotos      → {photos: {p0_c0: "data:...", ...}}
+//  votos_{adminUser}/{juez}_{pIdx}    → {candName: {criterio: valor, ...}, ...}
+//  progreso_{adminUser}/{juez}        → {prog: number}
+// ═══════════════════════════════════════════════════════════
+
+var G={eventName:'',participations:[],jurados:[],currentPart:0,
+       closed:false,started:false,judgeCode:'',currentRole:'',currentUser:'',eventOwner:''};
+var PHOTOS={};
+var VOTES={};      // {juez_pIdx: {...}}
+var JURYPROG={};   // {juez: number}
+
+var unsubConfig=null, unsubPhotos=null, unsubVotes=null, unsubProg=null, unsubUsers=null;
+
+// ─── UTILIDADES ──────────────────────────────
+function show(id){document.getElementById(id).classList.remove('hidden');}
+function hide(id){document.getElementById(id).classList.add('hidden');}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function sid(s){return String(s).replace(/[^a-zA-Z0-9]/g,'_');}
+function photoKey(pi,ci){return 'p'+pi+'_c'+ci;}
+
+// ═══════════════════════════════════════════════════════════
+//  INICIO DE LA APP
+// ═══════════════════════════════════════════════════════════
+function startApp(){
+  // Escuchar usuarios (todos los Admin Evento + super admin registrados)
+  unsubUsers=db.collection('usuarios').onSnapshot(function(snap){
+    ADMIN_EVENTOS={};
+    snap.forEach(function(doc){ADMIN_EVENTOS[doc.id]=doc.data();});
+    onStateChange();
+  },function(err){});
+
+  hide('s-loading');show('s-login');
+}
+
+// ─── Activar listeners del evento de un administrador específico ──
+function listenToEvent(adminUser){
+  // Cancelar listeners previos
+  if(unsubConfig)unsubConfig();
+  if(unsubPhotos)unsubPhotos();
+  if(unsubVotes)unsubVotes();
+  if(unsubProg)unsubProg();
+
+  G.eventOwner=adminUser;
+
+  unsubConfig=db.collection('eventos').doc(adminUser).onSnapshot(function(doc){
+    if(doc.exists){
+      var d=doc.data();
+      G.eventName=d.eventName||'';
+      G.participations=(d.participations||[]).map(function(p){
+        return{name:p.name||'',criteria:p.criteria||[],
+               candidates:(p.candidates||[]).map(function(c){return{name:c.name||''};})};
+      });
+      G.jurados=d.jurados||[];
+      G.currentPart=d.currentPart||0;
+      G.closed=!!d.closed;
+      G.started=!!d.started;
+    } else {
+      G.eventName='';G.participations=[];G.jurados=[];G.currentPart=0;G.closed=false;G.started=false;
+    }
+    onStateChange();
+  },function(err){
+    showConnError('❌ Error leyendo configuración: '+err.message);
+  });
+
+  unsubPhotos=db.collection('eventos').doc(adminUser+'_fotos').onSnapshot(function(doc){
+    PHOTOS=doc.exists?(doc.data().photos||{}):{};
+    onStateChange();
+  });
+
+  unsubVotes=db.collection('votos_'+adminUser).onSnapshot(function(snap){
+    VOTES={};
+    snap.forEach(function(doc){VOTES[doc.id]=doc.data();});
+    onStateChange();
+  });
+
+  unsubProg=db.collection('progreso_'+adminUser).onSnapshot(function(snap){
+    JURYPROG={};
+    snap.forEach(function(doc){JURYPROG[doc.id]=doc.data().prog||0;});
+    onStateChange();
+  });
+}
+
+// ─── CREDENCIALES DEL SUPER ADMIN ──────────────
+// Para cambiar la contraseña, edita el valor de SUPER_PASS abajo.
+var SUPER_USER='Enable304';
+var SUPER_PASS='0806hkpc';
+var ADMIN_EVENTOS={}; // {username: {password,role}}
+
+
+var firstLoad=true;
+function onStateChange(){
+  // Re-renderizar la vista activa según dónde esté el usuario
+  if(!document.getElementById('s-admin').classList.contains('hidden')){
+    refreshAdminView();
+  }
+  if(!document.getElementById('s-jury').classList.contains('hidden')){
+    renderJury();
+  }
+  if(!document.getElementById('s-super').classList.contains('hidden')){
+    if(document.getElementById('tab-admins').classList.contains('on'))renderAdminsList();
+  }
+}
+
+function refreshAdminView(){
+  if(G.started){
+    document.getElementById('a-evname').textContent=G.eventName;
+    if(G.closed){
+      if(document.getElementById('tab-res').classList.contains('on'))renderResults();
+    } else {
+      if(document.getElementById('tab-live').classList.contains('on'))renderLive();
+    }
+  }
+}
+
+// ─── LOGIN ────────────────────────────────────
+var selRole='';
+function selectRole(r){
+  selRole=r;
+  document.getElementById('rc-admin').classList.toggle('sel',r==='admin');
+  document.getElementById('rc-jury').classList.toggle('sel',r==='jury');
+  document.getElementById('login-admin-fields').classList.toggle('hidden',r!=='admin');
+  document.getElementById('login-jury-fields').classList.toggle('hidden',r!=='jury');
+  document.getElementById('l-err').classList.add('hidden');
+}
+async function doLogin(){
+  var err=document.getElementById('l-err');err.classList.add('hidden');
+  if(!selRole){err.textContent='⚠️ Selecciona un rol.';err.classList.remove('hidden');return;}
+
+  if(selRole==='admin'){
+    var au=document.getElementById('l-user').value.trim();
+    var ap=document.getElementById('l-pass').value;
+
+    // ¿Es el Super Admin?
+    if(au===SUPER_USER&&ap===SUPER_PASS){
+      G.currentRole='super';G.currentUser=au;
+      hide('s-login');show('s-super');superTab('admins');renderAdminsList();return;
+    }
+
+    // ¿Es un Admin Evento registrado?
+    var found=ADMIN_EVENTOS[au];
+    if(found&&found.password===ap&&found.role==='admin_evento'){
+      G.currentRole='admin_evento';G.currentUser=au;
+      listenToEvent(au);
+      showAdmin();return;
+    }
+    err.textContent='❌ Usuario o contraseña incorrectos.';err.classList.remove('hidden');return;
+  }
+
+  // ─── Jurado ───
+  var btn=document.getElementById('l-btn');
+  var ju=document.getElementById('l-jcode').value.trim().toLowerCase();
+  var jp=document.getElementById('l-jpass').value;
+  if(!ju||!jp){err.textContent='⚠️ Completa usuario y contraseña.';err.classList.remove('hidden');return;}
+
+  btn.disabled=true;btn.innerHTML='<span class="spinner"></span> Verificando...';
+  try{
+    // Buscar en TODOS los eventos cuál tiene este jurado (usuario+contraseña)
+    var snap=await db.collection('eventos').get();
+    var matchOwner=null,matchEvent=null;
+    snap.forEach(function(doc){
+      if(matchOwner)return;
+      var d=doc.data();
+      if(!d.started)return; // solo eventos iniciados
+      var jurados=d.jurados||[];
+      var found=jurados.find(function(j){return j.username.toLowerCase()===ju&&j.password===jp;});
+      if(found){matchOwner=doc.id;matchEvent=d;}
+    });
+    btn.disabled=false;btn.innerHTML='INGRESAR AL SISTEMA';
+    if(!matchOwner){
+      err.textContent='❌ Usuario o contraseña de jurado incorrectos, o el evento no ha sido iniciado.';
+      err.classList.remove('hidden');return;
+    }
+    G.judgeCode=ju;G.currentRole='jurado';G.currentUser=ju;
+    listenToEvent(matchOwner);
+    hide('s-login');show('s-jury');
+    // Pequeña espera para que listenToEvent traiga los datos
+    setTimeout(function(){renderJury();},400);
+  }catch(e){
+    btn.disabled=false;btn.innerHTML='INGRESAR AL SISTEMA';
+    err.textContent='❌ Error al verificar: '+e.message;err.classList.remove('hidden');
+  }
+}
+function logout(){
+  if(unsubConfig)unsubConfig();
+  if(unsubPhotos)unsubPhotos();
+  if(unsubVotes)unsubVotes();
+  if(unsubProg)unsubProg();
+  unsubConfig=unsubPhotos=unsubVotes=unsubProg=null;
+  G.judgeCode='';G.currentRole='';G.currentUser='';G.eventOwner='';selRole='';
+  G.eventName='';G.participations=[];G.jurados=[];G.currentPart=0;G.closed=false;G.started=false;
+  PHOTOS={};VOTES={};JURYPROG={};
+  ['rc-admin','rc-jury'].forEach(function(id){document.getElementById(id).classList.remove('sel');});
+  document.getElementById('login-admin-fields').classList.add('hidden');
+  document.getElementById('login-jury-fields').classList.add('hidden');
+  document.getElementById('l-err').classList.add('hidden');
+  document.getElementById('l-user').value='';
+  document.getElementById('l-pass').value='';
+  document.getElementById('l-jcode').value='';
+  document.getElementById('l-jpass').value='';
+  hide('s-admin');hide('s-jury');hide('s-super');show('s-login');
+}
+
+// ─── SUPER ADMIN ───────────────────────────────
+function superTab(t){
+  document.getElementById('super-admins').classList.add('hidden');
+  document.getElementById('super-event').classList.add('hidden');
+  document.getElementById('tab-admins').classList.remove('on');
+  document.getElementById('tab-asuper-event').classList.remove('on');
+  if(t==='admins'){
+    show('super-admins');document.getElementById('tab-admins').classList.add('on');renderAdminsList();
+  } else {
+    show('super-event');document.getElementById('tab-asuper-event').classList.add('on');
+  }
+}
+function enterEventAsSuper(){
+  hide('s-super');show('s-admin');
+  document.getElementById('back-to-super-btn').classList.remove('hidden');
+  listenToEvent(SUPER_USER);
+  // Dar un breve momento a que lleguen los datos antes de pintar
+  setTimeout(function(){
+    if(G.started){
+      document.getElementById('a-evname').textContent=G.eventName;
+      document.getElementById('tab-setup').style.opacity='.4';
+      document.getElementById('tab-setup').style.pointerEvents='none';
+      if(G.closed)aTab('res');else{aTab('live');renderLive();}
+    } else {
+      document.getElementById('tab-setup').style.opacity='';
+      document.getElementById('tab-setup').style.pointerEvents='';
+      renderSetup();aTab('setup');
+    }
+  },350);
+}
+function backToSuper(){
+  if(unsubConfig)unsubConfig();
+  if(unsubPhotos)unsubPhotos();
+  if(unsubVotes)unsubVotes();
+  if(unsubProg)unsubProg();
+  unsubConfig=unsubPhotos=unsubVotes=unsubProg=null;
+  G.eventOwner='';
+  hide('s-admin');show('s-super');superTab('admins');
+}
+async function createAdminEvento(){
+  var u=document.getElementById('na-user').value.trim();
+  var p=document.getElementById('na-pass').value;
+  var err=document.getElementById('na-err');err.classList.add('hidden');
+  if(!u||!p){err.textContent='Completa usuario y contraseña.';err.classList.remove('hidden');return;}
+  if(u.toLowerCase()===SUPER_USER.toLowerCase()){err.textContent='Ese usuario está reservado para el Super Admin.';err.classList.remove('hidden');return;}
+  if(ADMIN_EVENTOS[u]){err.textContent='Ese usuario ya existe.';err.classList.remove('hidden');return;}
+  try{
+    await db.collection('usuarios').doc(u).set({password:p,role:'admin_evento',createdAt:Date.now()});
+    document.getElementById('na-user').value='';
+    document.getElementById('na-pass').value='';
+  }catch(e){err.textContent='Error: '+e.message;err.classList.remove('hidden');}
+}
+async function deleteAdminEvento(u){
+  if(!confirm('¿Eliminar al administrador "'+u+'"?'))return;
+  try{await db.collection('usuarios').doc(u).delete();}catch(e){alert('Error: '+e.message);}
+}
+function renderAdminsList(){
+  var c=document.getElementById('admins-list');if(!c)return;
+  var keys=Object.keys(ADMIN_EVENTOS);
+  if(!keys.length){c.innerHTML='<p style="color:rgba(255,255,255,.45);font-size:13px">No hay administradores de evento creados aún.</p>';return;}
+  c.innerHTML='';
+  keys.forEach(function(u){
+    var row=document.createElement('div');
+    row.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px;margin-bottom:8px;background:rgba(212,175,55,.05);border:1px solid rgba(212,175,55,.18);border-radius:var(--br-md)';
+    row.innerHTML='<div><div style="font-weight:700;color:var(--gold-light)">'+esc(u)+'</div>'
+      +'<div style="font-size:11px;color:rgba(255,255,255,.45)">contraseña: '+esc(ADMIN_EVENTOS[u].password)+'</div></div>'
+      +'<button class="btn btn-sm btn-red" onclick="deleteAdminEvento(\''+esc(u)+'\')">🗑 ELIMINAR</button>';
+    c.appendChild(row);
+  });
+}
+
+// ─── ADMIN EVENTO ─────────────────────────────
+function showAdmin(){
+  hide('s-login');show('s-admin');
+  document.getElementById('back-to-super-btn').classList.add('hidden');
+  if(G.started){
+    document.getElementById('a-evname').textContent=G.eventName;
+    document.getElementById('tab-setup').style.opacity='.4';
+    document.getElementById('tab-setup').style.pointerEvents='none';
+    if(G.closed)aTab('res');else{aTab('live');renderLive();}
+  } else {renderSetup();aTab('setup');}
+}
+
+function aTab(t){
+  ['setup','live','res'].forEach(function(x){
+    document.getElementById('a-'+x).classList.add('hidden');
+    document.getElementById('tab-'+x).classList.remove('on');
+  });
+  show('a-'+t);document.getElementById('tab-'+t).classList.add('on');
+  if(t==='live')renderLive();
+  if(t==='res')renderResults();
+}
+
+// ─── SETUP (estado local hasta presionar "Iniciar") ──
+var LOCAL_PARTS=[]; // edición local antes de guardar en Firestore
+var LOCAL_PHOTOS={};
+var LOCAL_JURY=[]; // [{username,password}]
+
+function renderSetup(){
+  LOCAL_PARTS=G.participations.length?JSON.parse(JSON.stringify(G.participations)):[];
+  LOCAL_PHOTOS=JSON.parse(JSON.stringify(PHOTOS||{}));
+  LOCAL_JURY=(G.jurados&&G.jurados.length)?JSON.parse(JSON.stringify(G.jurados)):[];
+  if(LOCAL_PARTS.length===0)addPart();
+  if(LOCAL_JURY.length===0)addJuryUser();
+  document.getElementById('ev-name').value=G.eventName||'';
+  drawParts();
+  drawJuryUsers();
+}
+
+function addJuryUser(){
+  LOCAL_JURY.push({username:'',password:''});
+  drawJuryUsers();
+}
+function delJuryUser(i){
+  if(LOCAL_JURY.length>1){LOCAL_JURY.splice(i,1);drawJuryUsers();}
+}
+function drawJuryUsers(){
+  var c=document.getElementById('jury-users-list');if(!c)return;c.innerHTML='';
+  LOCAL_JURY.forEach(function(j,i){
+    var row=document.createElement('div');
+    row.style.cssText='display:flex;gap:8px;align-items:center;margin-bottom:8px';
+    row.innerHTML='<input class="inp" value="'+esc(j.username)+'" style="flex:1" onchange="LOCAL_JURY['+i+'].username=this.value.trim()"/>'
+      +'<input class="inp" value="'+esc(j.password)+'" style="flex:1" onchange="LOCAL_JURY['+i+'].password=this.value"/>'
+      +(LOCAL_JURY.length>1?'<button class="btn btn-sm" onclick="delJuryUser('+i+')" style="color:rgba(230,30,30,.8)">✕</button>':'');
+    c.appendChild(row);
+  });
+}
+
+function addPart(){
+  LOCAL_PARTS.push({name:'Participación '+(LOCAL_PARTS.length+1),criteria:[],candidates:[{name:''}]});
+  drawParts();
+}
+function drawParts(){
+  var c=document.getElementById('parts-list');c.innerHTML='';
+  LOCAL_PARTS.forEach(function(p,pi){
+    var d=document.createElement('div');d.className='part-block';
+    d.innerHTML='<div class="part-hdr">'
+      +'<input class="inp" value="'+esc(p.name)+'" onchange="LOCAL_PARTS['+pi+'].name=this.value" style="width:auto;flex:1;margin-right:8px;font-weight:700;color:var(--gold-light)"/>'
+      +(LOCAL_PARTS.length>1?'<button class="btn btn-sm btn-red" onclick="delPart('+pi+')">🗑 ELIMINAR</button>':'')
+      +'</div>'
+      +'<label style="margin-bottom:5px">ASPECTOS A CALIFICAR (4–7) — Escribe y presiona Enter</label>'
+      +'<div style="display:flex;gap:8px;margin-bottom:8px">'
+      +'<input class="inp" id="ci-'+pi+'" placeholder="Ej: Elegancia" style="flex:1" onkeydown="critKey(event,'+pi+')"/>'
+      +'<button class="btn btn-purple btn-sm" onclick="addCrit('+pi+')">+</button></div>'
+      +'<div id="crits-'+pi+'" style="margin-bottom:12px">'+renderCrits(pi)+'</div>'
+      +'<label style="margin-bottom:8px">CANDIDATAS</label>'
+      +'<div id="cands-'+pi+'"></div>'
+      +'<button class="btn btn-sm" onclick="addCand('+pi+')" style="margin-top:8px">+ AGREGAR CANDIDATA</button>';
+    c.appendChild(d);drawCands(pi);
+  });
+}
+function renderCrits(pi){
+  return LOCAL_PARTS[pi].criteria.map(function(cr,ci){
+    return '<span class="crit-tag">'+esc(cr)
+      +'<span onclick="delCrit('+pi+','+ci+')" style="cursor:pointer;margin-left:4px;font-weight:700;opacity:.65">×</span></span>';
+  }).join('');
+}
+function critKey(e,pi){if(e.key==='Enter'){e.preventDefault();addCrit(pi);}}
+function addCrit(pi){
+  var inp=document.getElementById('ci-'+pi);var v=inp.value.trim();
+  if(!v)return;
+  if(LOCAL_PARTS[pi].criteria.length>=7){alert('Máximo 7 aspectos.');return;}
+  LOCAL_PARTS[pi].criteria.push(v);inp.value='';
+  var el=document.getElementById('crits-'+pi);if(el)el.innerHTML=renderCrits(pi);
+}
+function delCrit(pi,ci){LOCAL_PARTS[pi].criteria.splice(ci,1);drawParts();}
+function delPart(pi){LOCAL_PARTS.splice(pi,1);drawParts();}
+
+function drawCands(pi){
+  var c=document.getElementById('cands-'+pi);if(!c)return;c.innerHTML='';
+  LOCAL_PARTS[pi].candidates.forEach(function(cand,ci){
+    var pk=photoKey(pi,ci);var hasPhoto=!!LOCAL_PHOTOS[pk];
+    var row=document.createElement('div');row.className='cand-row';
+    row.innerHTML=(hasPhoto
+      ?'<img class="cand-thumb" src="'+LOCAL_PHOTOS[pk]+'" alt="foto"/>'
+      :'<div class="cand-thumb-placeholder" onclick="triggerPhoto('+pi+','+ci+')">📷</div>')
+      +'<div style="flex:1;display:flex;flex-direction:column;gap:6px">'
+      +'<input class="inp" value="'+esc(cand.name)+'" placeholder="Nombre candidata" onchange="LOCAL_PARTS['+pi+'].candidates['+ci+'].name=this.value"/>'
+      +'<div style="display:flex;gap:6px">'
+      +(hasPhoto
+        ?'<button class="upload-btn" onclick="triggerPhoto('+pi+','+ci+')">📷 CAMBIAR</button>'
+         +'<button class="upload-btn" onclick="removePhoto('+pi+','+ci+')" style="color:rgba(230,30,30,.85)">✕ QUITAR</button>'
+        :'<button class="upload-btn" onclick="triggerPhoto('+pi+','+ci+')">📷 AGREGAR FOTO</button>')
+      +'</div></div>'
+      +(LOCAL_PARTS[pi].candidates.length>1
+        ?'<button class="btn btn-sm" onclick="delCand('+pi+','+ci+')" style="color:rgba(230,30,30,.8);align-self:center">✕</button>':'');
+    c.appendChild(row);
+    var fi=document.createElement('input');
+    fi.type='file';fi.accept='image/*';fi.style.display='none';fi.id='fi-'+pi+'-'+ci;
+    fi.addEventListener('change',function(e){
+      var f=e.target.files[0];if(!f)return;
+      resizeAndStore(f,pi,ci);
+    });
+    c.appendChild(fi);
+  });
+}
+function resizeAndStore(file,pi,ci){
+  var reader=new FileReader();
+  reader.onload=function(ev){
+    var img=new Image();
+    img.onload=function(){
+      var mW=500,mH=650,w=img.width,h=img.height; // tamaño moderado: Firestore límite 1MB/doc
+      if(w>mW){h=Math.round(h*mW/w);w=mW;}
+      if(h>mH){w=Math.round(w*mH/h);h=mH;}
+      var cv=document.createElement('canvas');cv.width=w;cv.height=h;
+      cv.getContext('2d').drawImage(img,0,0,w,h);
+      LOCAL_PHOTOS[photoKey(pi,ci)]=cv.toDataURL('image/jpeg',0.7);
+      drawCands(pi);
+    };
+    img.src=ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+function triggerPhoto(pi,ci){var i=document.getElementById('fi-'+pi+'-'+ci);if(i)i.click();}
+function removePhoto(pi,ci){delete LOCAL_PHOTOS[photoKey(pi,ci)];drawCands(pi);}
+function addCand(pi){LOCAL_PARTS[pi].candidates.push({name:''});drawParts();}
+function delCand(pi,ci){
+  if(LOCAL_PARTS[pi].candidates.length>1){
+    delete LOCAL_PHOTOS[photoKey(pi,ci)];
+    LOCAL_PARTS[pi].candidates.splice(ci,1);drawParts();
+  }
+}
+
+// ─── INICIAR EVENTO → guarda todo en Firestore ──
+async function startEvent(){
+  var name=document.getElementById('ev-name').value.trim();
+  var errs=[];
+  if(!name)errs.push('Falta el nombre del certamen.');
+
+  // Validar jurados
+  var jurados=LOCAL_JURY.filter(function(j){return j.username&&j.password;});
+  if(!jurados.length)errs.push('Agrega al menos un jurado con usuario y contraseña.');
+  // Verificar usuarios duplicados
+  var seenU={};
+  jurados.forEach(function(j){
+    var u=j.username.toLowerCase();
+    if(seenU[u])errs.push('Usuario de jurado duplicado: '+j.username);
+    seenU[u]=true;
+  });
+
+  LOCAL_PARTS.forEach(function(p,pi){
+    if(!p.name)errs.push('Participación '+(pi+1)+' sin nombre.');
+    if(!p.candidates.filter(function(c){return c.name;}).length)errs.push('Participación '+(pi+1)+' sin candidatas.');
+    if(p.criteria.length<4)errs.push('Participación '+(pi+1)+' requiere mínimo 4 aspectos (tiene '+p.criteria.length+').');
+    if(p.criteria.length>7)errs.push('Participación '+(pi+1)+' tiene más de 7 aspectos.');
+  });
+  var el=document.getElementById('setup-err');
+  if(errs.length){el.textContent=errs.join(' | ');el.classList.remove('hidden');return;}
+  el.classList.add('hidden');
+
+  var participations=LOCAL_PARTS.map(function(p){
+    return{name:p.name,criteria:p.criteria.slice(),
+           candidates:p.candidates.filter(function(c){return c.name;}).map(function(c){return{name:c.name};})};
+  });
+
+  var btn=document.getElementById('start-btn');
+  btn.disabled=true;btn.innerHTML='<span class="spinner"></span> GUARDANDO...';
+
+  var owner=G.currentRole==='super'?SUPER_USER:G.currentUser;
+
+  try{
+    // Limpiar votos y progreso anteriores de este administrador
+    await clearCollection('votos_'+owner);
+    await clearCollection('progreso_'+owner);
+
+    // Guardar config
+    await db.collection('eventos').doc(owner).set({
+      eventName:name,participations:participations,jurados:jurados,
+      currentPart:0,closed:false,started:true
+    });
+    // Guardar fotos
+    await db.collection('eventos').doc(owner+'_fotos').set({photos:LOCAL_PHOTOS});
+    // Inicializar progreso de cada jurado
+    for(var j of jurados){
+      await db.collection('progreso_'+owner).doc(j.username.toLowerCase()).set({prog:0});
+    }
+
+    document.getElementById('tab-setup').style.opacity='.4';
+    document.getElementById('tab-setup').style.pointerEvents='none';
+    aTab('live');
+    var listaJur=jurados.map(function(j){return j.username+' / '+j.password;}).join('\n');
+    alert('✅ Elección iniciada.\n\n👥 CREDENCIALES DE JURADO (usuario / contraseña):\n'+listaJur);
+  }catch(e){
+    alert('❌ Error al guardar: '+e.message);
+  }
+  btn.disabled=false;btn.innerHTML='▶ INICIAR ELECCIÓN';
+}
+
+async function clearCollection(name){
+  var snap=await db.collection(name).get();
+  var batch=db.batch();
+  snap.forEach(function(doc){batch.delete(doc.ref);});
+  if(!snap.empty)await batch.commit();
+}
+
+// ─── EN VIVO ──────────────────────────────────
+function renderLive(){
+  if(!G.started)return;
+  var p=G.participations[G.currentPart];
+  if(!p)return;
+  document.getElementById('live-info').innerHTML='<strong>📍 Participación activa:</strong> '+esc(p.name)+' <em>('+(G.currentPart+1)+' de '+G.participations.length+')</em>';
+  var sg=document.getElementById('jury-status');sg.innerHTML='';
+  G.jurados.forEach(function(jr){
+    var j=jr.username.toLowerCase();
+    var done=(JURYPROG[j]||0)>G.currentPart;
+    var d=document.createElement('div');
+    d.style.cssText='background:rgba(212,175,55,.08);border-radius:var(--br-md);padding:11px;border:1px solid rgba(212,175,55,.28)';
+    d.innerHTML='<div style="font-size:13px;font-weight:700;color:var(--gold-light)">'+esc(jr.username)+'</div>'
+      +'<div style="font-size:12px;margin-top:5px;font-weight:600;color:'+(done?'rgba(0,200,100,.85)':'rgba(255,165,0,.85)')+'">'+(done?'✔ Completado':'⏳ Pendiente')+'</div>';
+    sg.appendChild(d);
+  });
+  var lp=document.getElementById('live-partial');lp.innerHTML='';
+  var sc=calcScores(G.currentPart);
+  var keys=Object.keys(sc);
+  if(!keys.length){lp.innerHTML='<p style="color:rgba(255,255,255,.45);font-size:13px">⏳ Esperando votos...</p>';return;}
+  var sorted=keys.slice().sort(function(a,b){return sc[b]-sc[a];});
+  var mx=sc[sorted[0]]||1;
+  sorted.forEach(function(cand,i){
+    var pct=Math.round(sc[cand]/mx*100);
+    var row=document.createElement('div');row.style.marginBottom='10px';
+    row.innerHTML='<div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px">'
+      +'<span style="font-weight:600">'+(i+1)+'. '+esc(cand)+'</span>'
+      +'<span style="font-weight:700;color:var(--gold-light)">'+sc[cand].toFixed(2)+'</span></div>'
+      +'<div class="bar"><div class="bar-f" style="width:'+pct+'%"></div></div>';
+    lp.appendChild(row);
+  });
+}
+
+// ════════════════════════════════════════════
+//  calcScores — promedio real por jurado y candidata
+// ════════════════════════════════════════════
+function calcScores(pi){
+  var p=G.participations[pi];
+  var res={};var cnt={};
+  p.candidates.forEach(function(c){res[c.name]=0;cnt[c.name]=0;});
+
+  G.jurados.forEach(function(jr){
+    var j=jr.username.toLowerCase();
+    var vk=j+'_'+pi;
+    var voteDoc=VOTES[vk];
+    if(!voteDoc)return;
+    p.candidates.forEach(function(c){
+      var voteData=voteDoc[c.name];
+      if(!voteData)return;
+      var tot=0;var n=0;
+      p.criteria.forEach(function(cr){
+        var v=voteData[cr];
+        if(v&&v>0){tot+=Number(v);n++;}
+      });
+      if(n>0){res[c.name]+=tot/n;cnt[c.name]++;}
+    });
+  });
+  p.candidates.forEach(function(c){
+    if(cnt[c.name]>0)res[c.name]=res[c.name]/cnt[c.name];
+    else res[c.name]=0;
+  });
+  return res;
+}
+
+async function nextPart(){
+  if(G.currentPart<G.participations.length-1){
+    var btn=document.getElementById('next-part-btn');
+    btn.disabled=true;
+    await db.collection('eventos').doc(G.eventOwner).update({currentPart:G.currentPart+1});
+    btn.disabled=false;
+  } else alert('⚠️ Ya estás en la última participación. Usa "Cerrar votación" para finalizar.');
+}
+async function closeVoting(){
+  if(!confirm('¿Cerrar la votación para todos y ver los resultados finales?'))return;
+  var btn=document.getElementById('close-vote-btn');
+  btn.disabled=true;
+  await db.collection('eventos').doc(G.eventOwner).update({closed:true});
+  btn.disabled=false;
+  aTab('res');
+}
+
+// ════════════════════════════════════════════
+//  RESULTADOS — suma promedios por participación
+// ════════════════════════════════════════════
+var COLORS=['#d4af37','rgba(192,192,192,.85)','rgba(255,165,0,.85)','#b833ff','#00e5ff','rgba(255,80,150,.85)','rgba(0,200,100,.85)'];
+
+function renderResults(){
+  if(!G.started)return;
+  var c=document.getElementById('results-content');c.innerHTML='';
+
+  var candNames=[];var seen={};
+  G.participations.forEach(function(p){
+    p.candidates.forEach(function(cn){
+      if(cn.name&&!seen[cn.name]){seen[cn.name]=true;candNames.push(cn.name);}
+    });
+  });
+
+  var allSc={};var allPhotos={};
+  candNames.forEach(function(name){allSc[name]=0;});
+
+  G.participations.forEach(function(p,pi){
+    var sc=calcScores(pi);
+    p.candidates.forEach(function(cn,ci){
+      if(sc[cn.name]!==undefined)allSc[cn.name]=(allSc[cn.name]||0)+sc[cn.name];
+      if(!allPhotos[cn.name]&&PHOTOS[photoKey(pi,ci)])allPhotos[cn.name]=PHOTOS[photoKey(pi,ci)];
+    });
+  });
+
+  var sortedAll=candNames.slice().sort(function(a,b){return allSc[b]-allSc[a];});
+
+  var hdr=document.createElement('div');
+  hdr.style.cssText='text-align:center;margin-bottom:2rem';
+  hdr.innerHTML='<div style="font-size:56px;filter:drop-shadow(0 0 14px rgba(212,175,55,.5))">🏆</div>'
+    +'<h2 style="font-size:28px;margin-top:10px">'+esc(G.eventName)+'</h2>'
+    +'<p style="font-size:13px;color:rgba(212,175,55,.8);margin-top:6px">🏅 RESULTADOS FINALES OFICIALES</p>';
+  c.appendChild(hdr);
+
+  var rankCard=document.createElement('div');rankCard.className='card';
+  rankCard.innerHTML='<h3 style="margin-bottom:14px">🥇 CLASIFICACIÓN GENERAL</h3><div id="rank-body"></div>';
+  c.appendChild(rankCard);
+  var rb=rankCard.querySelector('#rank-body');
+  var maxTotal=allSc[sortedAll[0]]||1;
+
+  sortedAll.forEach(function(cand,i){
+    var pc=['p1','p2','p3'][i]||'px';
+    var medal=['🥇','🥈','🥉'][i]||String(i+1);
+    var photo=allPhotos[cand];
+    var row=document.createElement('div');
+    row.style.cssText='display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid rgba(212,175,55,.18)';
+    row.innerHTML='<div class="pos-badge '+pc+'">'+medal+'</div>'
+      +(photo?'<img class="result-cand-photo" src="'+photo+'" alt="'+esc(cand)+'"/>'
+        :'<div class="result-cand-avatar">👤</div>')
+      +'<div style="flex:1">'
+      +'<div style="font-weight:700;font-size:15px;color:var(--gold-light)">'+esc(cand)+'</div>'
+      +'<div style="margin-top:4px;height:10px;background:rgba(20,20,20,.8);border-radius:5px;overflow:hidden;border:1px solid rgba(212,175,55,.18)">'
+      +'<div style="height:100%;width:'+Math.round(allSc[cand]/maxTotal*100)+'%;background:linear-gradient(90deg,var(--gold),var(--neon-gold));border-radius:5px"></div></div>'
+      +'<div style="font-size:11px;color:rgba(255,255,255,.45);margin-top:2px">Promedio acumulado (suma de participaciones)</div>'
+      +'</div>'
+      +'<div style="font-weight:700;font-size:18px;color:var(--neon-gold);text-shadow:0 0 8px rgba(212,175,55,.5);text-align:right;min-width:55px">'+allSc[cand].toFixed(2)+'</div>';
+    rb.appendChild(row);
+  });
+
+  var chartCard=document.createElement('div');chartCard.className='card';
+  chartCard.innerHTML='<h3 style="margin-bottom:14px">📊 GRÁFICA COMPARATIVA GENERAL</h3>'
+    +sortedAll.map(function(cn,i){
+      var pct=Math.round(allSc[cn]/maxTotal*100);
+      return '<div class="cbar-row"><div class="cbar-name">'+esc(cn)+'</div>'
+        +'<div class="cbar-wrap"><div class="cbar-inner" style="width:'+pct+'%;background:'+COLORS[i%COLORS.length]+'">'+allSc[cn].toFixed(2)+'</div></div></div>';
+    }).join('');
+  c.appendChild(chartCard);
+
+  G.participations.forEach(function(p,pi){
+    var sc=calcScores(pi);
+    var sortedC=p.candidates.slice().sort(function(a,b){return (sc[b.name]||0)-(sc[a.name]||0);});
+    var mx2=sc[sortedC[0]?sortedC[0].name:'']||1;
+    var pCard=document.createElement('div');pCard.className='card';
+    var jDetail='';
+    G.jurados.forEach(function(jr){
+      var j=jr.username.toLowerCase();
+      var vk=j+'_'+pi;var voteDoc=VOTES[vk];if(!voteDoc)return;
+      p.candidates.forEach(function(cn){
+        var voteData=voteDoc[cn.name];if(!voteData)return;
+        var crVals=p.criteria.map(function(cr){
+          return '<td style="padding:6px 8px;font-size:11px;text-align:center;border:1px solid rgba(212,175,55,.18)">'+(voteData[cr]||'—')+'</td>';
+        }).join('');
+        jDetail+='<tr>'
+          +'<td style="padding:6px 8px;font-size:11px;border:1px solid rgba(212,175,55,.18)">'+esc(jr.username)+'</td>'
+          +'<td style="padding:6px 8px;font-size:11px;border:1px solid rgba(212,175,55,.18)">'+esc(cn.name)+'</td>'
+          +crVals+'</tr>';
+      });
+    });
+    var crHdrs=p.criteria.map(function(cr){
+      return '<th style="padding:6px 8px;font-size:11px;font-weight:700;text-align:center;border:1px solid rgba(212,175,55,.18)">'+esc(cr)+'</th>';
+    }).join('');
+
+    pCard.innerHTML='<h3 style="margin-bottom:12px">📋 '+esc(p.name)+'</h3>'
+      +'<div style="margin-bottom:12px">'
+      +sortedC.map(function(cn,i){
+        var pct=Math.round((sc[cn.name]||0)/mx2*100);
+        var cidx=G.participations[pi].candidates.findIndex(function(x){return x.name===cn.name;});
+        var photo=cidx>=0?PHOTOS[photoKey(pi,cidx)]:null;
+        return '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">'
+          +(photo?'<img style="width:36px;height:36px;border-radius:50%;object-fit:cover;object-position:center top;flex-shrink:0;border:2px solid rgba(212,175,55,.4)" src="'+photo+'" alt=""/>'
+            :'<div style="width:36px;height:36px;border-radius:50%;background:rgba(212,175,55,.1);flex-shrink:0;display:flex;align-items:center;justify-content:center;border:2px solid rgba(212,175,55,.28)">👤</div>')
+          +'<div style="flex:1">'
+          +'<div style="font-size:13px;margin-bottom:3px;font-weight:600;color:var(--gold-light)">'+(i===0?'🥇 ':'')+(i===1?'🥈 ':'')+(i===2?'🥉 ':'')+esc(cn.name)+'</div>'
+          +'<div class="cbar-wrap"><div class="cbar-inner" style="width:'+pct+'%;background:'+COLORS[i%COLORS.length]+'">'+(sc[cn.name]||0).toFixed(2)+'</div></div>'
+          +'</div></div>';
+      }).join('')
+      +'</div>'
+      +(jDetail?'<details style="margin-top:12px"><summary style="font-size:12px;color:var(--gold-light);cursor:pointer;padding:6px 0;font-weight:700">📋 Ver detalle por jurado ▼</summary>'
+       +'<div style="overflow-x:auto;margin-top:10px"><table style="width:100%;border-collapse:collapse"><thead><tr>'
+       +'<th style="padding:6px 8px;font-size:11px;font-weight:700;text-align:left;border:1px solid rgba(212,175,55,.18)">Jurado</th>'
+       +'<th style="padding:6px 8px;font-size:11px;font-weight:700;text-align:left;border:1px solid rgba(212,175,55,.18)">Candidata</th>'
+       +crHdrs+'</tr></thead><tbody>'+jDetail+'</tbody></table></div></details>':'');
+    c.appendChild(pCard);
+  });
+}
+
+// ─── NUEVA ELECCIÓN ──────────────────────────
+async function newElection(){
+  if(!confirm('¿Nueva elección con el mismo formato?\nSe borrarán candidatas, fotos y votos.\nSe conservan los jurados y sus contraseñas.'))return;
+  var btn=document.getElementById('newel-btn');btn.disabled=true;
+  var oldParts=G.participations.map(function(p){
+    return{name:p.name,criteria:p.criteria.slice(),candidates:[{name:''}]};
+  });
+  var oldJurados=(G.jurados||[]).slice();
+  var owner=G.eventOwner;
+  try{
+    await clearCollection('votos_'+owner);
+    await clearCollection('progreso_'+owner);
+    await db.collection('eventos').doc(owner).set({
+      eventName:'',participations:oldParts,jurados:oldJurados,currentPart:0,closed:false,started:false
+    });
+    await db.collection('eventos').doc(owner+'_fotos').set({photos:{}});
+    document.getElementById('tab-setup').style.opacity='';
+    document.getElementById('tab-setup').style.pointerEvents='';
+    G.eventName='';G.participations=oldParts;G.jurados=oldJurados;G.currentPart=0;G.closed=false;G.started=false;
+    PHOTOS={};
+    renderSetup();
+    aTab('setup');
+  }catch(e){alert('❌ Error: '+e.message);}
+  btn.disabled=false;
+}
+async function newElectionFresh(){
+  if(!confirm('¿Nueva elección completamente desde cero? Se borrará todo, incluyendo jurados.'))return;
+  var btn=document.getElementById('newelf-btn');btn.disabled=true;
+  var owner=G.eventOwner;
+  try{
+    await clearCollection('votos_'+owner);
+    await clearCollection('progreso_'+owner);
+    await db.collection('eventos').doc(owner).set({
+      eventName:'',participations:[],jurados:[],currentPart:0,closed:false,started:false
+    });
+    await db.collection('eventos').doc(owner+'_fotos').set({photos:{}});
+    document.getElementById('tab-setup').style.opacity='';
+    document.getElementById('tab-setup').style.pointerEvents='';
+    G.eventName='';G.participations=[];G.jurados=[];G.currentPart=0;G.closed=false;G.started=false;
+    PHOTOS={};
+    renderSetup();
+    aTab('setup');
+  }catch(e){alert('❌ Error: '+e.message);}
+  btn.disabled=false;
+}
+
+// ═══════════════════════════════════════════
+//  JURADO
+// ═══════════════════════════════════════════
+function renderJury(){
+  document.getElementById('j-evname').textContent=G.eventName||'VOTACIÓN';
+  document.getElementById('j-whoami').textContent='👤 Jurado: '+G.judgeCode;
+  if(G.closed){hide('j-vote');hide('j-wait');show('j-closed');return;}
+  var myProg=JURYPROG[G.judgeCode]||0;
+  if(myProg>G.currentPart){hide('j-vote');show('j-wait');hide('j-closed');return;}
+  hide('j-wait');hide('j-closed');show('j-vote');
+  drawJuryPart(myProg);
+}
+
+var currentDrawnPart=-1;
+function drawJuryPart(pi){
+  currentDrawnPart=pi;
+  var p=G.participations[pi];
+  if(!p)return;
+  document.getElementById('j-partbadge').textContent=(pi+1)+'/'+G.participations.length+': '+p.name;
+  var cl=document.getElementById('j-cands');cl.innerHTML='';
+  var vk=G.judgeCode+'_'+pi;
+  var ev=VOTES[vk]||{};
+  var locked=(JURYPROG[G.judgeCode]||0)>pi;
+
+  p.candidates.forEach(function(cand,ci){
+    var photo=PHOTOS[photoKey(pi,ci)];
+    var cc=document.createElement('div');cc.className='jury-cand-card';
+
+    var photoCol=document.createElement('div');
+    photoCol.className='jury-photo-col';
+    if(photo){
+      var img=document.createElement('img');
+      img.src=photo;img.alt='Foto de '+cand.name;
+      img.onerror=function(){
+        photoCol.innerHTML='<div class="jury-photo-placeholder"><span style="font-size:36px;opacity:.35">👤</span><span style="font-size:11px;opacity:.45">Sin foto</span></div>';
+      };
+      photoCol.appendChild(img);
+    } else {
+      photoCol.innerHTML='<div class="jury-photo-placeholder"><span style="font-size:36px;opacity:.35">👤</span><span style="font-size:11px;opacity:.45">Sin foto</span></div>';
+    }
+    cc.appendChild(photoCol);
+
+    var body=document.createElement('div');
+    body.className='jury-cand-body';
+    body.innerHTML='<div class="jury-cand-name">'+esc(cand.name)+'</div>';
+
+    p.criteria.forEach(function(cr){
+      var cur=(ev[cand.name]&&ev[cand.name][cr])||0;
+      var row=document.createElement('div');row.className='score-row';
+
+      var btnsDiv=document.createElement('div');btnsDiv.className='btns10';
+      for(var i=1;i<=10;i++){
+        var btn=document.createElement('button');
+        btn.className='sb'+(i<=cur?' on':'')+(locked?' lk':'');
+        btn.textContent=i;
+        btn.setAttribute('data-c',sid(cand.name));
+        btn.setAttribute('data-r',sid(cr));
+        btn.setAttribute('data-v',i);
+        if(!locked){
+          (function(val,candName,crName){
+            btn.onclick=function(){setScore(pi,candName,crName,val);};
+          })(i,cand.name,cr);
+        } else btn.disabled=true;
+        btnsDiv.appendChild(btn);
+      }
+      var valDiv=document.createElement('div');
+      valDiv.className='score-val';
+      valDiv.id='sv-'+pi+'-'+sid(cand.name)+'-'+sid(cr);
+      valDiv.textContent=cur||'—';
+
+      var lblDiv=document.createElement('div');
+      lblDiv.className='score-lbl';lblDiv.textContent=cr;
+
+      row.appendChild(lblDiv);row.appendChild(btnsDiv);row.appendChild(valDiv);
+      body.appendChild(row);
+    });
+
+    cc.appendChild(body);cl.appendChild(cc);
+  });
+
+  if(!locked)checkAllDone(pi);
+}
+
+var savingScore=false;
+async function setScore(pi,cand,cr,val){
+  if(savingScore)return;
+  savingScore=true;
+  var vk=G.judgeCode+'_'+pi;
+  // Actualización optimista local
+  if(!VOTES[vk])VOTES[vk]={};
+  if(!VOTES[vk][cand])VOTES[vk][cand]={};
+  VOTES[vk][cand][cr]=Number(val);
+
+  document.querySelectorAll('[data-c="'+sid(cand)+'"][data-r="'+sid(cr)+'"]').forEach(function(b){
+    b.classList.toggle('on',parseInt(b.getAttribute('data-v'))<=val);
+  });
+  var sv2=document.getElementById('sv-'+pi+'-'+sid(cand)+'-'+sid(cr));
+  if(sv2)sv2.textContent=val;
+  checkAllDone(pi);
+
+  try{
+    await db.collection('votos_'+G.eventOwner).doc(vk).set(VOTES[vk]);
+  }catch(e){
+    alert('❌ Error guardando tu voto, intenta de nuevo: '+e.message);
+  }
+  savingScore=false;
+}
+
+function checkAllDone(pi){
+  var vk=G.judgeCode+'_'+pi;
+  var p=G.participations[pi];var ok=true;
+  var votes=VOTES[vk]||{};
+  p.candidates.forEach(function(c){
+    p.criteria.forEach(function(cr){
+      if(!(votes[c.name]&&votes[c.name][cr]))ok=false;
+    });
+  });
+  document.getElementById('j-next').classList.toggle('hidden',!ok);
+  document.getElementById('j-nexthint').classList.toggle('hidden',!ok);
+}
+
+async function juryNext(){
+  if(!confirm('¿Confirmas que terminaste esta participación?\nNo podrás regresar ni editar tus calificaciones.'))return;
+  var btn=document.getElementById('j-next');
+  btn.disabled=true;
+  var np=(JURYPROG[G.judgeCode]||0)+1;
+  try{
+    await db.collection('progreso_'+G.eventOwner).doc(G.judgeCode).set({prog:np});
+  }catch(e){alert('❌ Error: '+e.message);btn.disabled=false;return;}
+  JURYPROG[G.judgeCode]=np;
+  hide('j-next');hide('j-nexthint');
+  if(G.closed||np>=G.participations.length){hide('j-vote');show('j-closed');return;}
+  if(np>G.currentPart){hide('j-vote');show('j-wait');return;}
+  drawJuryPart(np);
+  btn.disabled=false;
+}
+
+// ─── KEY LISTENERS ────────────────────────────
+document.getElementById('l-jcode').addEventListener('keydown',function(e){if(e.key==='Enter')doLogin();});
+document.getElementById('l-pass').addEventListener('keydown',function(e){if(e.key==='Enter')doLogin();});
+
+// ─── ARRANQUE ─────────────────────────────────
+initFirebase();
+</script>
+</body>
+</html>
